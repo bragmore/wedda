@@ -1,9 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import {
   Category, InsertCategory,
   Vendor, InsertVendor,
@@ -154,9 +150,7 @@ export class MemStorage implements IStorage {
     // Try multiple paths: works in dev (cwd/server), production (cwd/server), and Netlify Functions
     const candidates = [
       path.join(process.cwd(), "server"),
-      path.join(__dirname),
-      path.join(__dirname, "..", "server"),
-      path.join(__dirname, ".."),
+      process.cwd(),
       "/var/task/server",
     ];
     let dataDir = candidates[0];
