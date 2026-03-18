@@ -916,16 +916,24 @@ export default function Builder() {
                     <h2 className="text-lg font-semibold mb-2">
                       {sv ? "E-post skickad!" : "Email sent!"}
                     </h2>
-                    <p className="text-sm text-muted-foreground mb-6">
+                    <p className="text-sm text-muted-foreground mb-4">
                       {sv
-                        ? "Om e-postadressen finns registrerad har vi skickat en återställningskod."
-                        : "If the email is registered, we've sent a reset code."}
+                        ? "Vi har skickat en återställningskod till din e-post."
+                        : "We've sent a reset code to your email."}
                     </p>
+                    <div className="bg-accent/50 rounded-xl p-4 mb-6 text-left">
+                      <p className="text-sm font-medium mb-2">{sv ? "Så här gör du:" : "Here's what to do:"}</p>
+                      <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                        <li>{sv ? "Öppna din e-post och kopiera återställningskoden" : "Open your email and copy the reset code"}</li>
+                        <li>{sv ? "Klicka på knappen nedan" : "Click the button below"}</li>
+                        <li>{sv ? "Klistra in koden och välj nytt lösenord" : "Paste the code and choose a new password"}</li>
+                      </ol>
+                    </div>
                     <Button
                       onClick={() => { setAuthTab("reset"); setAuthError(""); }}
                       className="w-full h-12 text-base font-semibold cursor-pointer"
                     >
-                      {sv ? "Ange återställningskod" : "Enter reset code"}
+                      {sv ? "Jag har koden – återställ lösenord" : "I have the code – reset password"}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>

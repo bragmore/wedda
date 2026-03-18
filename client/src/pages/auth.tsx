@@ -254,18 +254,32 @@ export default function AuthPage() {
                 <h2 className="text-lg font-medium mb-2">
                   {sv ? "E-post skickad!" : "Email sent!"}
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-4">
                   {sv
-                    ? "Om e-postadressen finns registrerad har vi skickat en återställningskod."
-                    : "If the email is registered, we've sent a password reset code."}
+                    ? "Vi har skickat en återställningskod till din e-post."
+                    : "We've sent a reset code to your email."}
                 </p>
+                <div className="bg-accent/50 rounded-xl p-4 mb-6 text-left">
+                  <p className="text-sm font-medium mb-2">{sv ? "Så här gör du:" : "Here's what to do:"}</p>
+                  <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>{sv ? "Öppna din e-post och kopiera återställningskoden" : "Open your email and copy the reset code"}</li>
+                    <li>{sv ? "Gå till bröllopsguiden och klicka \"Glömt lösenord\"" : "Go to the wedding guide and click \"Forgot password\""}</li>
+                    <li>{sv ? "Klistra in koden och välj nytt lösenord" : "Paste the code and choose a new password"}</li>
+                  </ol>
+                </div>
+                <a href="/builder" className="inline-block">
+                  <Button className="w-full cursor-pointer">
+                    {sv ? "Gå till bröllopsguiden" : "Go to wedding guide"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </a>
               </div>
             ) : (
               <form onSubmit={handleForgot} className="space-y-4">
                 <div className="text-center mb-4">
                   <h1 className="text-2xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>{sv ? "Glömt lösenord" : "Forgot password"}</h1>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {sv ? "Ange din e-post så skickar vi en återställningslänk" : "Enter your email and we'll send a reset link"}
+                    {sv ? "Ange din e-post så skickar vi en återställningskod" : "Enter your email and we'll send a reset code"}
                   </p>
                 </div>
 
@@ -284,7 +298,7 @@ export default function AuthPage() {
                 {error && <p className="text-sm text-destructive">{error}</p>}
 
                 <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
-                  {loading ? (sv ? "Skickar..." : "Sending...") : (sv ? "Skicka återställningslänk" : "Send reset link")}
+                  {loading ? (sv ? "Skickar..." : "Sending...") : (sv ? "Skicka återställningskod" : "Send reset code")}
                 </Button>
               </form>
             )}

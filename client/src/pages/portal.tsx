@@ -17,6 +17,8 @@ import type { Message } from "@shared/schema";
 
 type Section = "overview" | "orders" | "messages" | "quotes";
 
+const ADMIN_EMAILS = ["jonatan.siden@gmail.com", "jonatan@prymit.com"];
+
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   sent: "bg-blue-100 text-blue-800",
@@ -92,13 +94,14 @@ export default function Portal() {
   });
 
   const replyMutation = useMutation({
-    mutationFn: async ({ orderId, body }: { orderId: number; body: string }) => {
+    mutationFn: async ({ orderId, body, vendorEmail }: { orderId: number; body: string; vendorEmail?: string }) => {
       return apiRequest("POST", `/api/orders/${orderId}/messages`, {
         senderType: "customer",
         senderName: user?.name || "",
         senderEmail: user?.email || "",
         subject: sv ? "Svar" : "Reply",
         body,
+        vendorEmail,
       }).then(r => r.json());
     },
     onSuccess: () => {
@@ -337,8 +340,9 @@ export default function Portal() {
                               <div className="flex items-center gap-3">
                                 <StatusIcon className="h-4 w-4 text-muted-foreground" />
                                 <div>
-                                  <p className="text-sm font-medium">{sv ? "Leverantör" : "Vendor"} #{item.vendorId}</p>
+                                  <p className="text-sm font-medium">{item.vendorName || `Leverantör #${item.vendorId}`}</p>
                                   <p className="text-xs text-muted-foreground">
+                                    {item.productName && <span className="mr-2">{item.productName}</span>}
                                     {item.quotedPrice ? `${item.quotedPrice.toLocaleString("sv-SE")} kr` : (sv ? "Väntar på offert" : "Awaiting quote")}
                                   </p>
                                 </div>
@@ -347,7 +351,7 @@ export default function Portal() {
                                 <Badge className={statusColors[item.status] || "bg-gray-100"} variant="outline">
                                   {item.status}
                                 </Badge>
-                                {item.status === "sent" && (
+                                {item.status === "sent" && user?.email && ADMIN_EMAILS.includes(user.email) && (
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -355,7 +359,7 @@ export default function Portal() {
                                     disabled={quoteMutation.isPending}
                                     className="text-xs cursor-pointer"
                                   >
-                                    {sv ? "Simulera offert" : "Simulate quote"}
+                                    {sv ? "Simulera offert (admin)" : "Simulate quote (admin)"}
                                   </Button>
                                 )}
                               </div>
@@ -451,13 +455,20 @@ export default function Portal() {
                       disabled={!replyText.trim() || replyMutation.isPending}
                       onClick={() => {
                         if (replyText.trim()) {
-                          replyMutation.mutate({ orderId: selectedMessage.orderId, body: replyText });
+                          // Pass vendor email so backend can send real email
+                          const vendorEmail = selectedMessage.senderType === "vendor" ? selectedMessage.senderEmail : undefined;
+                          replyMutation.mutate({ orderId: selectedMessage.orderId, body: replyText, vendorEmail });
                         }
                       }}
                       className="cursor-pointer"
                     >
                       <Send className="h-4 w-4 mr-2" />
                       {sv ? "Skicka svar" : "Send reply"}
+                      {selectedMessage.senderType === "vendor" && (
+                        <span className="ml-1 text-xs opacity-70">
+                          ({sv ? "e-post skickas" : "email sent"})
+                        </span>
+                      )}
                     </Button>
                   </div>
                 </Card>
@@ -480,9 +491,11 @@ export default function Portal() {
               <Card className="p-8 text-center">
                 <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
                 <p className="text-muted-foreground">{sv ? "Inga offerter mottagna ännu" : "No quotes received yet"}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {sv ? "Simulera offerter under Beställningar-fliken" : "Simulate quotes in the Orders tab"}
-                </p>
+                {user?.email && ADMIN_EMAILS.includes(user.email) && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {sv ? "Simulera offerter under Beställningar-fliken (admin)" : "Simulate quotes in the Orders tab (admin)"}
+                  </p>
+                )}
               </Card>
             ) : (
               <div className="grid gap-4">
@@ -493,8 +506,9 @@ export default function Portal() {
                       <Card key={`${order.id}-${item.id}`} className="p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-medium text-sm">{sv ? "Leverantör" : "Vendor"} #{item.vendorId}</p>
+                            <p className="font-medium text-sm">{item.vendorName || `Leverantör #${item.vendorId}`}</p>
                             <p className="text-xs text-muted-foreground">
+                              {item.productName && <span>{item.productName} · </span>}
                               {sv ? "Beställning" : "Order"} #{order.id}
                             </p>
                             {item.vendorMessage && (

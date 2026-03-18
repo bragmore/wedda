@@ -121,7 +121,7 @@ export async function registerRoutes(server: Server, app: Express) {
           sendEmail(
             [email],
             "Återställ ditt Wedda-lösenord",
-            `Hej ${user.name}!\n\nVi har fått en begäran om att återställa ditt lösenord på Wedda.\n\nKopiera och klistra in denna återställningskod:\n\n${resetToken}\n\nKoden gäller i 1 timme.\n\nOm du inte begärde detta kan du ignorera detta meddelande.\n\nVarma hälsningar,\nTeamet på Wedda`
+            `Hej ${user.name}!\n\nVi har fått en begäran om att återställa ditt lösenord på Wedda.\n\nDin återställningskod:\n\n${resetToken}\n\nSå här gör du:\n1. Gå tillbaka till Wedda och klicka på "Ange återställningskod"\n2. Klistra in koden ovan\n3. Välj ditt nya lösenord\n\nKoden gäller i 1 timme.\n\nOm du inte begärde detta kan du ignorera detta meddelande.\n\nVarma hälsningar,\nTeamet på Wedda`
           );
           console.log(`[RESET] Token created for ${email}`);
         } catch (e) {
@@ -133,7 +133,7 @@ export async function registerRoutes(server: Server, app: Express) {
     }
 
     // Always return success to avoid leaking whether email exists
-    res.json({ success: true, message: "If the email exists, a reset link has been sent" });
+    res.json({ success: true, message: "If the email exists, a reset code has been sent" });
   });
 
   // Reset password
@@ -423,7 +423,18 @@ export async function registerRoutes(server: Server, app: Express) {
     const result = [];
     for (const order of orders) {
       const items = await storage.getOrderItemsByOrder(order.id);
-      result.push({ ...order, items });
+      // Resolve vendor and product names for each item
+      const enrichedItems = await Promise.all(items.map(async (item) => {
+        const vendor = await storage.getVendorById(item.vendorId);
+        const product = item.productId ? await storage.getProductById(item.productId) : null;
+        return {
+          ...item,
+          vendorName: vendor?.name || `Leverantör #${item.vendorId}`,
+          vendorEmail: vendor?.email || "",
+          productName: product?.name || (vendor?.name ? `Tjänst från ${vendor.name}` : "Tjänst"),
+        };
+      }));
+      result.push({ ...order, items: enrichedItems });
     }
     res.json(result);
   });
@@ -486,10 +497,10 @@ export async function registerRoutes(server: Server, app: Express) {
     res.json(messages);
   });
 
-  // Post a message to an order
+  // Post a message to an order (also sends email to vendor if customer message)
   app.post("/api/orders/:orderId/messages", async (req, res) => {
     const orderId = parseInt(req.params.orderId);
-    const { senderType, senderName, senderEmail, subject, body, orderItemId } = req.body;
+    const { senderType, senderName, senderEmail, subject, body, orderItemId, vendorEmail: targetVendorEmail } = req.body;
 
     if (!body) {
       return res.status(400).json({ error: "Message body is required" });
@@ -505,6 +516,20 @@ export async function registerRoutes(server: Server, app: Express) {
       body,
       read: false,
     });
+
+    // If customer sends a message, email it to the vendor
+    if ((senderType || "customer") === "customer" && targetVendorEmail) {
+      try {
+        sendEmail(
+          [targetVendorEmail],
+          `Meddelande från kund via Wedda`,
+          `Hej!\n\nNi har fått ett meddelande från en kund via Wedda.\n\nKund: ${senderName || req.authUser?.name || "Okänd"}\nE-post: ${senderEmail || req.authUser?.email || ""}\n\nMeddelande:\n${body}\n\nVänligen svara kunden direkt på deras e-post ovan.\n\nMed vänlig hälsning,\nWedda – Sveriges bröllopsguide`
+        );
+        console.log(`[MSG] Customer message emailed to vendor: ${targetVendorEmail}`);
+      } catch (e) {
+        console.error("[MSG] Failed to email vendor:", e);
+      }
+    }
 
     res.json(message);
   });
