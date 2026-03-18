@@ -60,23 +60,30 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  // Build Netlify Function — bundle everything into an IIFE, then wrap with CJS export.
+  // Build Netlify Function — bundle to a separate file, then create a
+  // tiny CJS wrapper that Netlify can parse without issues.
   console.log("building netlify function...");
   await esbuild({
     entryPoints: ["src/netlify/api.ts"],
     platform: "node",
     bundle: true,
-    format: "iife",
-    globalName: "__netlify",
-    outfile: "netlify/functions/api.js",
+    format: "cjs",
+    outfile: "netlify/functions/_api-bundle.js",
     define: {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
     external: [],
     logLevel: "info",
-    footer: { js: "module.exports = { handler: __netlify.handler };" },
   });
+
+  // Write the thin wrapper that Netlify will discover as the function
+  const { writeFile: wf } = await import("fs/promises");
+  await wf("netlify/functions/api.js",
+    `// Thin wrapper — the real code is in _api-bundle.js\n` +
+    `const bundle = require("./_api-bundle.js");\n` +
+    `exports.handler = bundle.handler || (bundle.default && bundle.default.handler);\n`
+  );
 }
 
 buildAll().catch((err) => {

@@ -1,7 +1,7 @@
-import express from "express";
-import serverless from "serverless-http";
-import { registerRoutes } from "../../server/routes";  // esbuild resolves from project root
-import { createServer } from "http";
+const express = require("express");
+const serverless = require("serverless-http");
+const { registerRoutes } = require("../../server/routes");
+const { createServer } = require("http");
 
 const app = express();
 const httpServer = createServer(app);
@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Strip /.netlify/functions/api prefix so Express routes see /api/...
-app.use((req, _res, next) => {
+app.use((req: any, _res: any, next: any) => {
   if (req.path.startsWith("/.netlify/functions/api")) {
     req.url = "/api" + req.url.replace("/.netlify/functions/api", "");
   }
@@ -24,7 +24,7 @@ const initPromise = (async () => {
   routesRegistered = true;
 })();
 
-// Handler for Netlify
+// Handler for Netlify — CJS export so esbuild produces real module.exports
 const handler = async (event: any, context: any) => {
   if (!routesRegistered) {
     await initPromise;
@@ -35,4 +35,4 @@ const handler = async (event: any, context: any) => {
   return serverlessHandler(event, context);
 };
 
-export { handler };
+module.exports = { handler };
