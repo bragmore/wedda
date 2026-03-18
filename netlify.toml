@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build:netlify"
+  publish = "dist/public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Redirect all API calls to the serverless function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# SPA fallback for hash routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

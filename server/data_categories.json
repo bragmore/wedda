@@ -1,0 +1,210 @@
+[
+  {
+    "id": "plats",
+    "name_sv": "Plats & Lokal",
+    "name_en": "Venue & Location",
+    "icon": "Building2",
+    "slug": "plats",
+    "parent_id": null
+  },
+  {
+    "id": "venues",
+    "name_sv": "Bröllopslokaler",
+    "name_en": "Venues",
+    "icon": "Building2",
+    "slug": "venues",
+    "parent_id": "plats"
+  },
+  {
+    "id": "klader",
+    "name_sv": "Kläder & Accessoarer",
+    "name_en": "Attire & Accessories",
+    "icon": "Shirt",
+    "slug": "klader",
+    "parent_id": null
+  },
+  {
+    "id": "dresses",
+    "name_sv": "Brudklänningar",
+    "name_en": "Bridal Dresses",
+    "icon": "Shirt",
+    "slug": "bridal-dresses",
+    "parent_id": "klader"
+  },
+  {
+    "id": "suits",
+    "name_sv": "Kostymer",
+    "name_en": "Suits & Tuxedos",
+    "icon": "Briefcase",
+    "slug": "suits",
+    "parent_id": "klader"
+  },
+  {
+    "id": "rings",
+    "name_sv": "Vigselringar",
+    "name_en": "Wedding Rings",
+    "icon": "CircleDot",
+    "slug": "wedding-rings",
+    "parent_id": "klader"
+  },
+  {
+    "id": "mat-dryck",
+    "name_sv": "Mat & Dryck",
+    "name_en": "Food & Drinks",
+    "icon": "UtensilsCrossed",
+    "slug": "mat-dryck",
+    "parent_id": null
+  },
+  {
+    "id": "catering",
+    "name_sv": "Catering",
+    "name_en": "Catering",
+    "icon": "UtensilsCrossed",
+    "slug": "catering",
+    "parent_id": "mat-dryck"
+  },
+  {
+    "id": "cake",
+    "name_sv": "Bröllopstårta",
+    "name_en": "Wedding Cake",
+    "icon": "Cake",
+    "slug": "wedding-cake",
+    "parent_id": "mat-dryck"
+  },
+  {
+    "id": "underhallning",
+    "name_sv": "Underhållning & Musik",
+    "name_en": "Entertainment & Music",
+    "icon": "Music",
+    "slug": "underhallning",
+    "parent_id": null
+  },
+  {
+    "id": "dj",
+    "name_sv": "DJ & Musik",
+    "name_en": "DJ & Music",
+    "icon": "Music",
+    "slug": "dj-music",
+    "parent_id": "underhallning"
+  },
+  {
+    "id": "entertainment",
+    "name_sv": "Underhållning",
+    "name_en": "Entertainment",
+    "icon": "PartyPopper",
+    "slug": "entertainment",
+    "parent_id": "underhallning"
+  },
+  {
+    "id": "sound-lighting",
+    "name_sv": "Ljud & Ljus",
+    "name_en": "Sound & Lighting",
+    "icon": "Lightbulb",
+    "slug": "sound-lighting",
+    "parent_id": "underhallning"
+  },
+  {
+    "id": "dekor-blommor",
+    "name_sv": "Dekor & Blommor",
+    "name_en": "Decor & Flowers",
+    "icon": "Flower2",
+    "slug": "dekor-blommor",
+    "parent_id": null
+  },
+  {
+    "id": "flowers",
+    "name_sv": "Blommor & Florist",
+    "name_en": "Flowers & Florist",
+    "icon": "Flower2",
+    "slug": "flowers",
+    "parent_id": "dekor-blommor"
+  },
+  {
+    "id": "decoration",
+    "name_sv": "Dekoration",
+    "name_en": "Decoration",
+    "icon": "Sparkles",
+    "slug": "decoration",
+    "parent_id": "dekor-blommor"
+  },
+  {
+    "id": "foto-video",
+    "name_sv": "Foto & Video",
+    "name_en": "Photo & Video",
+    "icon": "Camera",
+    "slug": "foto-video",
+    "parent_id": null
+  },
+  {
+    "id": "photography",
+    "name_sv": "Fotograf",
+    "name_en": "Photography",
+    "icon": "Camera",
+    "slug": "photography",
+    "parent_id": "foto-video"
+  },
+  {
+    "id": "video",
+    "name_sv": "Video & Film",
+    "name_en": "Videography",
+    "icon": "Video",
+    "slug": "videography",
+    "parent_id": "foto-video"
+  },
+  {
+    "id": "skonhet",
+    "name_sv": "Skönhet",
+    "name_en": "Beauty",
+    "icon": "Scissors",
+    "slug": "skonhet",
+    "parent_id": null
+  },
+  {
+    "id": "hair-makeup",
+    "name_sv": "Hår & Smink",
+    "name_en": "Hair & Makeup",
+    "icon": "Scissors",
+    "slug": "hair-makeup",
+    "parent_id": "skonhet"
+  },
+  {
+    "id": "planering-ovrigt",
+    "name_sv": "Planering & Övrigt",
+    "name_en": "Planning & Other",
+    "icon": "ClipboardList",
+    "slug": "planering-ovrigt",
+    "parent_id": null
+  },
+  {
+    "id": "planning",
+    "name_sv": "Bröllopsplanering",
+    "name_en": "Wedding Planning",
+    "icon": "ClipboardList",
+    "slug": "wedding-planning",
+    "parent_id": "planering-ovrigt"
+  },
+  {
+    "id": "officiant",
+    "name_sv": "Vigselförrättare",
+    "name_en": "Officiant",
+    "icon": "Heart",
+    "slug": "officiant",
+    "parent_id": "planering-ovrigt"
+  },
+  {
+    "id": "transport",
+    "name_sv": "Transport",
+    "name_en": "Transport",
+    "icon": "Car",
+    "slug": "transport",
+    "parent_id": "planering-ovrigt"
+  },
+  {
+    "id": "invitations",
+    "name_sv": "Inbjudningar & Tryck",
+    "name_en": "Invitations & Print",
+    "icon": "Mail",
+    "slug": "invitations",
+    "parent_id": "planering-ovrigt"
+  }
+]
