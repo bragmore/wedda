@@ -11,7 +11,7 @@ declare module "http" {
     rawBody: unknown;
   }
 }
-
+//test
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -100,4 +100,7 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
-})();
+})().catch((err) => {
+  console.error("FATAL: Server failed to start:", err);
+  process.exit(1);
+});
