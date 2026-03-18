@@ -1028,7 +1028,7 @@ export default function Builder() {
                     </div>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input type="text" placeholder={sv ? "Återställningskod" : "Reset code"} value={resetToken} onChange={e => setResetToken(e.target.value)} className="pl-10 h-12 rounded-xl font-mono tracking-wider" required />
+                      <Input type="text" placeholder={sv ? "Klistra in återställningskod från e-post" : "Paste reset code from email"} value={resetToken} onChange={e => setResetToken(e.target.value)} className="pl-10 h-12 rounded-xl text-xs" required />
                     </div>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

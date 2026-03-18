@@ -112,20 +112,24 @@ export async function registerRoutes(server: Server, app: Express) {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    const resetToken = storage.createResetToken(email);
-    
-    // Send reset email if user exists
-    if (resetToken) {
-      const user = await storage.getUserByEmail(email);
-      if (user) {
+    // Check user exists first
+    const user = await storage.getUserByEmail(email);
+    if (user) {
+      const resetToken = storage.createResetToken(email);
+      if (resetToken) {
         try {
           sendEmail(
             [email],
             "Återställ ditt Wedda-lösenord",
-            `Hej ${user.name}!\n\nVi har fått en begäran om att återställa ditt lösenord på Wedda.\n\nDin återställningskod är: ${resetToken}\n\nOm du inte begärde detta kan du ignorera detta meddelande.\n\nVarma hälsningar,\nTeamet på Wedda`
+            `Hej ${user.name}!\n\nVi har fått en begäran om att återställa ditt lösenord på Wedda.\n\nKopiera och klistra in denna återställningskod:\n\n${resetToken}\n\nKoden gäller i 1 timme.\n\nOm du inte begärde detta kan du ignorera detta meddelande.\n\nVarma hälsningar,\nTeamet på Wedda`
           );
-        } catch (e) { /* non-blocking */ }
+          console.log(`[RESET] Token created for ${email}`);
+        } catch (e) {
+          console.error("[RESET] Email send error:", e);
+        }
       }
+    } else {
+      console.log(`[RESET] No user found for email: ${email}`);
     }
 
     // Always return success to avoid leaking whether email exists

@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import {
   Category, InsertCategory,
   Vendor, InsertVendor,
@@ -74,7 +75,6 @@ export class SupabaseStorage implements IStorage {
   // In-memory session store (serverless-safe with short TTL)
   // Note: For production, use Supabase sessions table or JWT tokens
   private sessions: Map<string, number> = new Map();
-  private resetTokens: Map<string, { email: string; expires: number }> = new Map();
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -383,27 +383,40 @@ export class SupabaseStorage implements IStorage {
     this.sessions.delete(token);
   }
 
-  // ── Password Reset (in-memory) ──────────────────────────────────────────
+  // ── Password Reset (HMAC-signed tokens — stateless, serverless-safe) ───
+  private getResetSecret(): string {
+    // Use Supabase key as HMAC secret (always available)
+    return process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || "wedda-reset-secret";
+  }
+
   createResetToken(email: string): string | null {
-    // Check user exists in memory? No - check Supabase
-    // For simplicity, just create token; the verify step will check
-    const token = generateToken();
-    this.resetTokens.set(token, { email, expires: Date.now() + 3600000 });
-    return token;
+    const expires = Date.now() + 3600000; // 1 hour
+    const payload = JSON.stringify({ email, expires });
+    const payloadB64 = Buffer.from(payload).toString("base64url");
+    const sig = crypto.createHmac("sha256", this.getResetSecret()).update(payloadB64).digest("base64url");
+    // Return a short 6-digit code + the signed token (code is for UX, token is for verification)
+    const code = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit code
+    const fullToken = `${code}.${payloadB64}.${sig}`;
+    return fullToken;
   }
 
   verifyResetToken(token: string): string | null {
-    const entry = this.resetTokens.get(token);
-    if (!entry) return null;
-    if (Date.now() > entry.expires) {
-      this.resetTokens.delete(token);
+    try {
+      const parts = token.trim().split(".");
+      if (parts.length !== 3) return null;
+      const [, payloadB64, sig] = parts;
+      const expectedSig = crypto.createHmac("sha256", this.getResetSecret()).update(payloadB64).digest("base64url");
+      if (sig !== expectedSig) return null;
+      const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString());
+      if (Date.now() > payload.expires) return null;
+      return payload.email;
+    } catch {
       return null;
     }
-    return entry.email;
   }
 
-  deleteResetToken(token: string): void {
-    this.resetTokens.delete(token);
+  deleteResetToken(_token: string): void {
+    // No-op: stateless tokens don't need deletion
   }
 
   // ── Orders (Supabase) ───────────────────────────────────────────────────

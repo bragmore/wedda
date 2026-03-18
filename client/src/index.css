@@ -304,38 +304,27 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes floatCube {
+/* Parallax float animations — transform ONLY, no opacity changes */
+@keyframes parallaxFloat1 {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-30px) rotate(90deg); }
-  50% { transform: translateY(-15px) rotate(180deg); }
-  75% { transform: translateY(-40px) rotate(270deg); }
+  50% { transform: translateY(-18px) rotate(3deg); }
 }
 
-@keyframes floatBlob {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(15px, -20px) scale(1.05); }
-  66% { transform: translate(-10px, -35px) scale(0.95); }
-}
-
-@keyframes floatDiamond {
+@keyframes parallaxFloat2 {
   0%, 100% { transform: translateY(0) rotate(45deg); }
-  50% { transform: translateY(-25px) rotate(45deg); }
+  50% { transform: translateY(-22px) rotate(45deg); }
 }
 
-@keyframes floatRing {
+@keyframes parallaxFloat3 {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  33% { transform: translateY(-12px) rotate(8deg); }
-  66% { transform: translateY(5px) rotate(-5deg); }
+  33% { transform: translateY(-14px) rotate(6deg); }
+  66% { transform: translateY(6px) rotate(-4deg); }
 }
 
-@keyframes floatHeart {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-15px) scale(1.03); }
-}
-
-@keyframes floatStar {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-10px) scale(1.08); }
+@keyframes parallaxFloat4 {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(8px, -12px); }
+  66% { transform: translate(-6px, -20px); }
 }
 
 @keyframes gentleBounce {
@@ -520,6 +509,7 @@
 }
 
 /* ── Parallax Floating Elements ────────────────────────── */
+/* IMPORTANT: No opacity changes in keyframes! Static opacity only. */
 .parallax-bg {
   position: fixed;
   inset: 0;
@@ -527,91 +517,82 @@
   z-index: 0;
   overflow: hidden;
 }
+
+/* Wedding cake emoji — light: visible, dark: visible */
+.parallax-cake {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  opacity: 0.12;
+  animation: parallaxFloat1 28s ease-in-out infinite;
+}
+.parallax-cake::before {
+  content: '🎂';
+  font-size: 28px;
+  display: block;
+}
+.dark .parallax-cake {
+  opacity: 0.10;
+}
+
 /* Diamond shape */
 .parallax-diamond {
   position: absolute;
-  width: 24px;
-  height: 24px;
-  background: hsl(350 60% 55% / 0.04);
-  border: 1px solid hsl(350 60% 55% / 0.06);
-  border-radius: 4px;
-  animation: floatDiamond 30s ease-in-out infinite;
-}
-/* Wedding rings shape */
-.parallax-ring {
-  position: absolute;
   width: 28px;
   height: 28px;
-  border: 1.5px solid hsl(40 70% 65% / 0.08);
+  background: hsl(350 60% 55% / 0.08);
+  border: 1.5px solid hsl(350 60% 55% / 0.12);
+  border-radius: 4px;
+  opacity: 1;
+  animation: parallaxFloat2 24s ease-in-out infinite;
+}
+.dark .parallax-diamond {
+  background: hsl(350 55% 65% / 0.10);
+  border-color: hsl(350 55% 65% / 0.15);
+}
+
+/* Wedding rings */
+.parallax-ring {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border: 2px solid hsl(40 70% 65% / 0.12);
   border-radius: 50%;
-  animation: floatRing 35s ease-in-out infinite;
+  opacity: 1;
+  animation: parallaxFloat3 30s ease-in-out infinite;
 }
 .parallax-ring::after {
   content: '';
   position: absolute;
   top: 0;
-  left: 12px;
-  width: 28px;
-  height: 28px;
-  border: 1.5px solid hsl(40 70% 65% / 0.06);
+  left: 14px;
+  width: 32px;
+  height: 32px;
+  border: 2px solid hsl(40 70% 65% / 0.10);
   border-radius: 50%;
 }
-/* Heart shape */
-.parallax-heart {
-  position: absolute;
-  width: 16px;
-  height: 14px;
-  animation: floatHeart 40s ease-in-out infinite;
+.dark .parallax-ring {
+  border-color: hsl(40 70% 70% / 0.15);
 }
-.parallax-heart::before,
-.parallax-heart::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 10px;
-  height: 14px;
-  border-radius: 10px 10px 0 0;
-  background: hsl(350 60% 55% / 0.04);
-}
-.parallax-heart::before {
-  left: 0;
-  transform: rotate(-45deg);
-  transform-origin: bottom right;
-}
-.parallax-heart::after {
-  right: 0;
-  transform: rotate(45deg);
-  transform-origin: bottom left;
-}
-/* Star/sparkle shape */
-.parallax-star {
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  animation: floatStar 28s ease-in-out infinite;
-}
-.parallax-star::before {
-  content: '✦';
-  font-size: 16px;
-  display: block;
-  color: hsl(350 60% 55% / 0.06);
+.dark .parallax-ring::after {
+  border-color: hsl(40 70% 70% / 0.12);
 }
 
-/* Dark mode parallax */
-.dark .parallax-diamond {
-  background: hsl(350 55% 65% / 0.04);
-  border-color: hsl(350 55% 65% / 0.06);
+/* Bouquet emoji */
+.parallax-bouquet {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  opacity: 0.12;
+  animation: parallaxFloat4 32s ease-in-out infinite;
 }
-.dark .parallax-ring,
-.dark .parallax-ring::after {
-  border-color: hsl(40 70% 70% / 0.08);
+.parallax-bouquet::before {
+  content: '💐';
+  font-size: 28px;
+  display: block;
 }
-.dark .parallax-heart::before,
-.dark .parallax-heart::after {
-  background: hsl(350 55% 65% / 0.05);
-}
-.dark .parallax-star::before {
-  color: hsl(350 55% 65% / 0.06);
+.dark .parallax-bouquet {
+  opacity: 0.10;
 }
 
 /* ── Card hover glow ───────────────────────────────────── */
