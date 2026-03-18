@@ -5328,5 +5328,35 @@
     "category_id": "officiant",
     "image_url": "https://images.unsplash.com/photo-1532712938310-34cb3982ef74?w=600&h=400&fit=crop",
     "vendor_id": 533
+  },
+  {
+    "name": "Sofia Wigen Fotografi",
+    "description": "Wedding photographer based in Tullinge (Stockholm). Shoots weddings and can be reached by email, typically replying within 24 hours on weekdays.",
+    "price_from": 10000,
+    "price_to": 25000,
+    "price_on_demand": false,
+    "category_id": "photography",
+    "image_url": "https://images.unsplash.com/photo-1520854221256-17451cc331bf?w=600&h=400&fit=crop",
+    "vendor_id": 534
+  },
+  {
+    "name": "MR Cake",
+    "description": "Bakery offering cake orders via web and email, with stores in Stockholm and Gothenburg.",
+    "price_from": 1500,
+    "price_to": 8000,
+    "price_on_demand": false,
+    "category_id": "cake",
+    "image_url": "https://images.unsplash.com/photo-1602351447937-745cb720612f?w=600&h=400&fit=crop",
+    "vendor_id": 535
+  },
+  {
+    "name": "Glossy Cakes",
+    "description": "Stockholm-based cake studio accepting enquiries by email for custom cakes, including wedding cakes.",
+    "price_from": 2500,
+    "price_to": 12000,
+    "price_on_demand": false,
+    "category_id": "cake",
+    "image_url": "https://images.unsplash.com/photo-1542826438-bd32f43d626f?w=600&h=400&fit=crop",
+    "vendor_id": 536
   }
 ]
