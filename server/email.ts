@@ -38,12 +38,16 @@ async function sendViaResend(to: string[], subject: string, body: string): Promi
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM || "Wedda <noreply@wedda.se>",
+        from: process.env.RESEND_FROM || "Wedda <onboarding@resend.dev>",
         to,
         subject,
         text: body,
       }),
     });
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error(`[EMAIL] Resend API error (${res.status}):`, errBody);
+    }
     return res.ok;
   } catch {
     return false;
