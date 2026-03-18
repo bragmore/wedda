@@ -59,6 +59,28 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  // Build Netlify Function
+  console.log("building netlify function...");
+  const netlifyAllowlist = [
+    ...allowlist,
+    "@supabase/supabase-js",
+    "serverless-http",
+  ];
+  const netlifyExternals = allDeps.filter((dep) => !netlifyAllowlist.includes(dep));
+  await esbuild({
+    entryPoints: ["netlify/functions/api.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "netlify/functions/api.js",
+    define: {
+      "process.env.NODE_ENV": '"production"',
+    },
+    minify: true,
+    external: netlifyExternals,
+    logLevel: "info",
+  });
 }
 
 buildAll().catch((err) => {

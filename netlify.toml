@@ -6,6 +6,9 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[functions]
+  included_files = ["server/data_*.json"]
+
 # Redirect all API calls to the serverless function
 [[redirects]]
   from = "/api/*"

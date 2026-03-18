@@ -146,7 +146,22 @@ export class MemStorage implements IStorage {
   }
 
   private loadData() {
-    const dataDir = path.join(process.cwd(), "server");
+    // Try multiple paths: works in dev (cwd/server), production (cwd/server), and Netlify Functions
+    const candidates = [
+      path.join(process.cwd(), "server"),
+      path.join(__dirname),
+      path.join(__dirname, "..", "server"),
+      path.join(__dirname, ".."),
+      "/var/task/server",
+    ];
+    let dataDir = candidates[0];
+    for (const dir of candidates) {
+      if (fs.existsSync(path.join(dir, "data_categories.json"))) {
+        dataDir = dir;
+        break;
+      }
+    }
+    console.log(`[storage] Loading data from: ${dataDir}`);
 
     // Load categories
     const rawCategories: RawCategory[] = JSON.parse(
