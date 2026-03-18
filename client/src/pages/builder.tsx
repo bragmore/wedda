@@ -269,7 +269,13 @@ export default function Builder() {
   }, [isAuthenticated]);
 
   // Step 1: Auth — login/register inline
-  const [authTab, setAuthTab] = useState<"login" | "register">("login");
+  const [authTab, setAuthTab] = useState<"login" | "register" | "forgot" | "reset">("login");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [resetToken, setResetToken] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
@@ -820,24 +826,26 @@ export default function Builder() {
               </p>
             </div>
 
-            <div className="flex mb-6 border-b border-border">
-              <button
-                onClick={() => { setAuthTab("login"); setAuthError(""); }}
-                className={`flex-1 pb-3 text-sm font-medium transition-colors cursor-pointer ${
-                  authTab === "login" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"
-                }`}
-              >
-                {sv ? "Logga in" : "Log in"}
-              </button>
-              <button
-                onClick={() => { setAuthTab("register"); setAuthError(""); }}
-                className={`flex-1 pb-3 text-sm font-medium transition-colors cursor-pointer ${
-                  authTab === "register" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"
-                }`}
-              >
-                {sv ? "Skapa konto" : "Create account"}
-              </button>
-            </div>
+            {(authTab === "login" || authTab === "register") && (
+              <div className="flex mb-6 border-b border-border">
+                <button
+                  onClick={() => { setAuthTab("login"); setAuthError(""); }}
+                  className={`flex-1 pb-3 text-sm font-medium transition-colors cursor-pointer ${
+                    authTab === "login" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {sv ? "Logga in" : "Log in"}
+                </button>
+                <button
+                  onClick={() => { setAuthTab("register"); setAuthError(""); }}
+                  className={`flex-1 pb-3 text-sm font-medium transition-colors cursor-pointer ${
+                    authTab === "register" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {sv ? "Skapa konto" : "Create account"}
+                </button>
+              </div>
+            )}
 
             {authTab === "login" ? (
               <form onSubmit={handleAuthLogin} className="space-y-4">
@@ -854,8 +862,15 @@ export default function Builder() {
                   {authLoading ? (sv ? "Loggar in..." : "Logging in...") : (sv ? "Logga in" : "Log in")}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => { setAuthTab("forgot"); setAuthError(""); setForgotSent(false); setForgotEmail(""); }}
+                  className="w-full text-sm text-muted-foreground hover:text-primary transition-colors duration-200 cursor-pointer pt-1"
+                >
+                  {sv ? "Glömt lösenord?" : "Forgot password?"}
+                </button>
               </form>
-            ) : (
+            ) : authTab === "register" ? (
               <form onSubmit={handleAuthRegister} className="space-y-4">
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -883,7 +898,154 @@ export default function Builder() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </form>
-            )}
+            ) : authTab === "forgot" ? (
+              <div className="space-y-4">
+                <button
+                  onClick={() => { setAuthTab("login"); setAuthError(""); }}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  {sv ? "Tillbaka till inloggning" : "Back to login"}
+                </button>
+
+                {forgotSent ? (
+                  <div className="text-center py-6">
+                    <div className="inline-flex p-4 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold mb-2">
+                      {sv ? "E-post skickad!" : "Email sent!"}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      {sv
+                        ? "Om e-postadressen finns registrerad har vi skickat en återställningskod."
+                        : "If the email is registered, we've sent a reset code."}
+                    </p>
+                    <Button
+                      onClick={() => { setAuthTab("reset"); setAuthError(""); }}
+                      className="w-full h-12 text-base font-semibold cursor-pointer"
+                    >
+                      {sv ? "Ange återställningskod" : "Enter reset code"}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    setAuthError("");
+                    setAuthLoading(true);
+                    try {
+                      await apiRequest("POST", "/api/auth/forgot-password", { email: forgotEmail });
+                      setForgotSent(true);
+                    } catch {
+                      setAuthError(sv ? "Något gick fel" : "Something went wrong");
+                    } finally {
+                      setAuthLoading(false);
+                    }
+                  }} className="space-y-4">
+                    <div className="text-center mb-4">
+                      <h2 className="text-2xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+                        {sv ? "Glömt lösenord" : "Forgot password"}
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {sv ? "Ange din e-post så skickar vi en återställningskod" : "Enter your email and we'll send a reset code"}
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type="email" placeholder={sv ? "E-postadress" : "Email"} value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} className="pl-10 h-12 rounded-xl" required />
+                    </div>
+                    {authError && <p className="text-sm text-destructive">{authError}</p>}
+                    <Button type="submit" size="lg" className="w-full h-14 text-base font-semibold hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer" disabled={authLoading}>
+                      {authLoading ? (sv ? "Skickar..." : "Sending...") : (sv ? "Skicka återställningskod" : "Send reset code")}
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ) : authTab === "reset" ? (
+              <div className="space-y-4">
+                <button
+                  onClick={() => { setAuthTab("forgot"); setAuthError(""); setResetSuccess(false); }}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  {sv ? "Tillbaka" : "Back"}
+                </button>
+
+                {resetSuccess ? (
+                  <div className="text-center py-6">
+                    <div className="inline-flex p-4 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold mb-2">
+                      {sv ? "Lösenord ändrat!" : "Password changed!"}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      {sv ? "Du kan nu logga in med ditt nya lösenord." : "You can now log in with your new password."}
+                    </p>
+                    <Button
+                      onClick={() => { setAuthTab("login"); setAuthError(""); }}
+                      className="w-full h-12 text-base font-semibold cursor-pointer"
+                    >
+                      {sv ? "Logga in" : "Log in"}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    setAuthError("");
+                    if (resetNewPassword !== resetConfirm) {
+                      setAuthError(sv ? "Lösenorden matchar inte" : "Passwords don't match");
+                      return;
+                    }
+                    if (resetNewPassword.length < 6) {
+                      setAuthError(sv ? "Lösenordet måste vara minst 6 tecken" : "Password must be at least 6 characters");
+                      return;
+                    }
+                    setAuthLoading(true);
+                    try {
+                      const res = await apiRequest("POST", "/api/auth/reset-password", { token: resetToken, newPassword: resetNewPassword });
+                      const data = await res.json();
+                      if (data.success) {
+                        setResetSuccess(true);
+                      } else {
+                        setAuthError(sv ? "Ogiltig eller utgången kod" : "Invalid or expired code");
+                      }
+                    } catch {
+                      setAuthError(sv ? "Ogiltig eller utgången kod" : "Invalid or expired code");
+                    } finally {
+                      setAuthLoading(false);
+                    }
+                  }} className="space-y-4">
+                    <div className="text-center mb-4">
+                      <h2 className="text-2xl font-bold tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+                        {sv ? "Återställ lösenord" : "Reset password"}
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {sv ? "Ange koden från din e-post och välj nytt lösenord" : "Enter the code from your email and choose a new password"}
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type="text" placeholder={sv ? "Återställningskod" : "Reset code"} value={resetToken} onChange={e => setResetToken(e.target.value)} className="pl-10 h-12 rounded-xl font-mono tracking-wider" required />
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type="password" placeholder={sv ? "Nytt lösenord (minst 6 tecken)" : "New password (min 6 chars)"} value={resetNewPassword} onChange={e => setResetNewPassword(e.target.value)} className="pl-10 h-12 rounded-xl" required minLength={6} />
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type="password" placeholder={sv ? "Bekräfta lösenord" : "Confirm password"} value={resetConfirm} onChange={e => setResetConfirm(e.target.value)} className="pl-10 h-12 rounded-xl" required minLength={6} />
+                    </div>
+                    {authError && <p className="text-sm text-destructive">{authError}</p>}
+                    <Button type="submit" size="lg" className="w-full h-14 text-base font-semibold hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer" disabled={authLoading}>
+                      {authLoading ? (sv ? "Återställer..." : "Resetting...") : (sv ? "Återställ lösenord" : "Reset password")}
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

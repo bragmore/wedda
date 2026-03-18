@@ -311,7 +311,7 @@ export default function Home() {
             <div className="w-16 h-1 bg-primary/60 mx-auto rounded-full" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-0 relative">
             {[
               { num: "01", title: t("how.step1.title"), desc: t("how.step1.desc") },
               { num: "02", title: t("how.step2.title"), desc: t("how.step2.desc") },
@@ -319,10 +319,28 @@ export default function Home() {
             ].map((step, i) => (
               <div
                 key={step.num}
-                className="text-left transition-all duration-500"
+                className="relative text-center md:text-left px-6 md:px-10 transition-all duration-500"
                 style={{ transitionDelay: `${i * 150}ms` }}
               >
-                <span className="text-8xl font-extralight text-primary/20 block mb-4 leading-none">{step.num}</span>
+                {/* Elegant connector line between steps (desktop) */}
+                {i < 2 && (
+                  <div className="hidden md:block absolute top-[3.5rem] -right-[1px] w-px h-24 z-10">
+                    <div className="w-px h-full bg-gradient-to-b from-primary/30 via-primary/15 to-transparent" />
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary/25" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary/15" />
+                  </div>
+                )}
+                {/* Elegant connector line between steps (mobile) */}
+                {i < 2 && (
+                  <div className="md:hidden flex justify-center py-4 absolute -bottom-6 left-1/2 -translate-x-1/2">
+                    <div className="h-px w-16 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                  </div>
+                )}
+                {/* Vertical divider between columns (desktop) */}
+                {i > 0 && (
+                  <div className="hidden md:block absolute left-0 top-8 bottom-8 w-px bg-gradient-to-b from-transparent via-border to-transparent" />
+                )}
+                <span className="text-8xl font-extralight text-primary/15 block mb-4 leading-none select-none">{step.num}</span>
                 <h3 className="text-xl font-bold mb-3" style={{ letterSpacing: "-0.01em" }}>{step.title}</h3>
                 <p className="text-sm text-muted-foreground leading-[1.7]">{step.desc}</p>
               </div>
