@@ -8,7 +8,6 @@
 
 [functions]
   included_files = ["server/data_*.json"]
-  node_bundler = "none"
 
 # Redirect all API calls to the serverless function
 [[redirects]]
