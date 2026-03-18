@@ -63,11 +63,9 @@ function safeUser(user: User): Omit<User, "passwordHash"> & { passwordHash?: und
 }
 
 // Get the base URL for links in emails
-function getBaseUrl(req: Request): string {
+function getBaseUrl(_req: Request): string {
   if (process.env.BASE_URL) return process.env.BASE_URL;
-  const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers.host || "wedda.se";
-  return `${proto}://${host}`;
+  return "https://imaginative-fenglisu-d5e61c.netlify.app";
 }
 
 export async function registerRoutes(server: Server, app: Express) {
