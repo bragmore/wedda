@@ -4,16 +4,27 @@ import path from "path";
 
 export function serveStatic(app: Express) {
   const distPath = path.join(__dirname, "public");
+  const indexPath = path.join(distPath, "index.html");
+
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+    console.error(
+      `[static] WARNING: dist/public not found at ${distPath}. Static files will not be served.`
     );
+    // Register a fallback so the server doesn't hang on all routes
+    app.get("/{*path}", (_req, res) => {
+      res.status(503).send("Frontend not built. Run npm run build first.");
+    });
+    return;
   }
 
   app.use(express.static(distPath));
 
-  // fall through to index.html for all non-API routes (SPA client-side routing)
+  // SPA catch-all: return index.html for any non-API route
   app.get("/{*path}", (_req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+    if (!fs.existsSync(indexPath)) {
+      console.error(`[static] index.html not found at ${indexPath}`);
+      return res.status(500).send("index.html missing from build output.");
+    }
+    res.sendFile(indexPath);
   });
 }
