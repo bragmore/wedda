@@ -69,6 +69,11 @@ function getBaseUrl(_req: Request): string {
 }
 
 export async function registerRoutes(server: Server, app: Express) {
+  // Health check — used by Coolify/Docker to verify container is alive
+  app.get("/health", (_req: Request, res: Response) => {
+    res.status(200).json({ status: "ok" });
+  });
+
   // Apply auth middleware to all routes
   app.use(authMiddleware);
 
