@@ -60,15 +60,15 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  // Build Netlify Function — bundle to a separate file, then create a
-  // tiny CJS wrapper that Netlify can parse without issues.
+  // Build Netlify Function — single self-contained CJS file.
+  // Source uses require/module.exports so esbuild produces real CJS exports.
   console.log("building netlify function...");
   await esbuild({
     entryPoints: ["src/netlify/api.ts"],
     platform: "node",
     bundle: true,
     format: "cjs",
-    outfile: "netlify/functions/_api-bundle.js",
+    outfile: "netlify/functions/api.js",
     define: {
       "process.env.NODE_ENV": '"production"',
     },
@@ -76,14 +76,6 @@ async function buildAll() {
     external: [],
     logLevel: "info",
   });
-
-  // Write the thin wrapper that Netlify will discover as the function
-  const { writeFile: wf } = await import("fs/promises");
-  await wf("netlify/functions/api.js",
-    `// Thin wrapper — the real code is in _api-bundle.js\n` +
-    `const bundle = require("./_api-bundle.js");\n` +
-    `exports.handler = bundle.handler || (bundle.default && bundle.default.handler);\n`
-  );
 }
 
 buildAll().catch((err) => {
