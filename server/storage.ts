@@ -107,6 +107,7 @@ export interface IStorage {
   // Order Items
   createOrderItem(item: InsertOrderItem): Promise<OrderItem>;
   getOrderItemsByOrder(orderId: number): Promise<OrderItem[]>;
+  getOrderItemById(id: number): Promise<OrderItem | undefined>;
   updateOrderItem(id: number, updates: Partial<OrderItem>): Promise<OrderItem | undefined>;
 
   // Messages
@@ -453,6 +454,10 @@ export class MemStorage implements IStorage {
 
   async getOrderItemsByOrder(orderId: number): Promise<OrderItem[]> {
     return [...this.orderItems.values()].filter(i => i.orderId === orderId);
+  }
+
+  async getOrderItemById(id: number): Promise<OrderItem | undefined> {
+    return this.orderItems.get(id);
   }
 
   async updateOrderItem(id: number, updates: Partial<OrderItem>): Promise<OrderItem | undefined> {

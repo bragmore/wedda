@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { storage, SWEDISH_REGIONS } from "./storage";
 import { sendEmail } from "./email";
@@ -12,6 +13,26 @@ declare global {
       authUser?: User;
     }
   }
+}
+
+// ── Vendor token HMAC utilities ────────────────────────────────────────────
+const VENDOR_TOKEN_SECRET = process.env.VENDOR_TOKEN_SECRET || process.env.SESSION_SECRET || "wedda-vendor-token-secret-change-me";
+
+function createVendorToken(orderItemId: number): string {
+  const payload = `${orderItemId}`;
+  const sig = crypto.createHmac("sha256", VENDOR_TOKEN_SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+function verifyVendorToken(token: string): number | null {
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [payload, sig] = parts;
+  const expected = crypto.createHmac("sha256", VENDOR_TOKEN_SECRET).update(payload).digest("hex");
+  if (!crypto.timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"))) return null;
+  const orderItemId = parseInt(payload, 10);
+  if (isNaN(orderItemId)) return null;
+  return orderItemId;
 }
 
 // Auth middleware - extracts user from Bearer token
@@ -39,6 +60,14 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 function safeUser(user: User): Omit<User, "passwordHash"> & { passwordHash?: undefined } {
   const { passwordHash, ...safe } = user;
   return safe;
+}
+
+// Get the base URL for links in emails
+function getBaseUrl(req: Request): string {
+  if (process.env.BASE_URL) return process.env.BASE_URL;
+  const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "wedda.se";
+  return `${proto}://${host}`;
 }
 
 export async function registerRoutes(server: Server, app: Express) {
@@ -321,13 +350,13 @@ export async function registerRoutes(server: Server, app: Express) {
     let totalEstimate = 0;
     const order = await storage.createOrder({ userId, notes, status: "pending", totalEstimate: 0 });
 
-    const vendorEmails: { email: string; vendorName: string; items: string[] }[] = [];
+    const vendorEmails: { email: string; vendorName: string; items: { desc: string; token: string }[] }[] = [];
 
     for (const item of items) {
       const vendor = await storage.getVendorById(item.vendorId);
       const product = item.productId ? await storage.getProductById(item.productId) : null;
 
-      await storage.createOrderItem({
+      const orderItem = await storage.createOrderItem({
         orderId: order.id,
         vendorId: item.vendorId,
         categoryId: item.categoryId,
@@ -339,6 +368,9 @@ export async function registerRoutes(server: Server, app: Express) {
         deliveryDate: null,
       });
 
+      // Generate vendor response token for this order item
+      const vendorToken = createVendorToken(orderItem.id);
+
       if (product && product.price_from) {
         totalEstimate += product.price_from;
       }
@@ -347,12 +379,12 @@ export async function registerRoutes(server: Server, app: Express) {
         const existing = vendorEmails.find(v => v.email === vendor.email);
         const itemDesc = product ? product.name : `Service request`;
         if (existing) {
-          existing.items.push(itemDesc);
+          existing.items.push({ desc: itemDesc, token: vendorToken });
         } else {
           vendorEmails.push({
             email: vendor.email,
             vendorName: vendor.name,
-            items: [itemDesc],
+            items: [{ desc: itemDesc, token: vendorToken }],
           });
         }
       }
@@ -375,17 +407,19 @@ export async function registerRoutes(server: Server, app: Express) {
 
     await storage.updateOrderStatus(order.id, "sent");
 
-    // Send real emails to vendors – one email per vendor, ONLY about their product(s)
+    // Send real emails to vendors with response links
+    const baseUrl = getBaseUrl(req);
     const user = await storage.getUserById(userId);
     for (const ve of vendorEmails) {
       try {
-        const productList = ve.items.length === 1
-          ? `Efterfrågad tjänst: ${ve.items[0]}`
-          : `Efterfrågade tjänster:\n${ve.items.map(i => `  • ${i}`).join("\n")}`;
+        const itemLines = ve.items.map(i =>
+          `  - ${i.desc}\n    Svara här: ${baseUrl}/#/vendor/respond/${i.token}`
+        ).join("\n");
+
         sendEmail(
           [ve.email],
           `Ny bröllopsförfrågan via Wedda`,
-          `Hej ${ve.vendorName}!\n\nNi har fått en ny förfrågan via Wedda.\n\nKund: ${user?.name || "Okänd"}\nE-post: ${user?.email || ""}\nTelefon: ${user?.phone || "Ej angivet"}\n\n${productList}\n\nVänligen kontakta kunden direkt för att diskutera detaljer och lämna en offert.\n\nMed vänlig hälsning,\nWedda – Sveriges bröllopsguide\nwedda.se`
+          `Hej ${ve.vendorName}!\n\nNi har fått en ny förfrågan via Wedda.\n\nKund: ${user?.name || "Okänd"}\nE-post: ${user?.email || ""}\nTelefon: ${user?.phone || "Ej angivet"}\n\n${ve.items.length === 1 ? "Efterfrågad tjänst" : "Efterfrågade tjänster"}:\n${itemLines}\n\nKlicka på länken ovan för att svara kunden och lämna en offert direkt på Wedda.\n\nMed vänlig hälsning,\nWedda – Sveriges bröllopsguide\nwedda.se`
         );
       } catch (e) { /* non-blocking */ }
     }
@@ -395,8 +429,8 @@ export async function registerRoutes(server: Server, app: Express) {
       try {
         sendEmail(
           [user.email],
-          `Din beställning #${order.id} är skickad! ✨`,
-          `Hej ${user.name}!\n\nDin beställning har skickats till följande leverantörer:\n${vendorEmails.map(ve => `  • ${ve.vendorName} (${ve.items.join(", ")})`).join("\n")}\n\nLeverantörerna kommer att kontakta dig med offerter.\n\nDu kan följa din beställning i din portal på Wedda.\n\nVarma hälsningar,\nTeamet på Wedda`
+          `Din beställning #${order.id} är skickad!`,
+          `Hej ${user.name}!\n\nDin beställning har skickats till följande leverantörer:\n${vendorEmails.map(ve => `  - ${ve.vendorName} (${ve.items.map(i => i.desc).join(", ")})`).join("\n")}\n\nLeverantörerna kommer att kontakta dig med offerter.\n\nDu kan följa din beställning i din portal på Wedda.\n\nVarma hälsningar,\nTeamet på Wedda`
         );
       } catch (e) { /* non-blocking */ }
     }
@@ -406,7 +440,7 @@ export async function registerRoutes(server: Server, app: Express) {
       sendEmail(
         ["jonatan.siden@gmail.com", "svenake62@gmail.com"],
         `[Wedda Admin] Ny beställning #${order.id}`,
-        `Ny beställning har skapats på Wedda.\n\nKund: ${user?.name} (${user?.email})\nTelefon: ${user?.phone || "Ej angivet"}\n\nLeverantörer:\n${vendorEmails.map(ve => `  • ${ve.vendorName}: ${ve.items.join(", ")}`).join("\n")}\n\nTotal uppskattning: ${totalEstimate.toLocaleString("sv-SE")} kr`
+        `Ny beställning har skapats på Wedda.\n\nKund: ${user?.name} (${user?.email})\nTelefon: ${user?.phone || "Ej angivet"}\n\nLeverantörer:\n${vendorEmails.map(ve => `  - ${ve.vendorName}: ${ve.items.map(i => i.desc).join(", ")}`).join("\n")}\n\nTotal uppskattning: ${totalEstimate.toLocaleString("sv-SE")} kr`
       );
     } catch (e) { /* non-blocking */ }
 
@@ -446,7 +480,7 @@ export async function registerRoutes(server: Server, app: Express) {
     res.json({ ...order, items });
   });
 
-  // Simulate vendor response (for demo)
+  // Simulate vendor response (for demo — admin only)
   app.post("/api/orders/:orderId/items/:itemId/quote", async (req, res) => {
     const { quotedPrice, vendorMessage, deliveryDate } = req.body;
     const item = await storage.updateOrderItem(parseInt(req.params.itemId), {
@@ -475,6 +509,47 @@ export async function registerRoutes(server: Server, app: Express) {
     res.json(item);
   });
 
+  // Accept/decline a quote
+  app.post("/api/orders/:orderId/items/:itemId/accept", requireAuth, async (req, res) => {
+    const item = await storage.getOrderItemById(parseInt(req.params.itemId));
+    if (!item || item.orderId !== parseInt(req.params.orderId)) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+    if (item.status !== "quoted") {
+      return res.status(400).json({ error: "Item is not in quoted status" });
+    }
+
+    const updated = await storage.updateOrderItem(item.id, { status: "accepted" });
+
+    // Notify vendor via email
+    const vendor = await storage.getVendorById(item.vendorId);
+    const user = req.authUser!;
+    if (vendor?.email) {
+      try {
+        sendEmail(
+          [vendor.email],
+          `Offert accepterad – ${user.name} via Wedda`,
+          `Hej ${vendor.name}!\n\nGoda nyheter! Kunden ${user.name} har accepterat er offert på ${item.quotedPrice?.toLocaleString("sv-SE")} kr.\n\nKontaktuppgifter:\nE-post: ${user.email}\nTelefon: ${user.phone || "Ej angivet"}\n\nVänligen kontakta kunden för att komma överens om nästa steg.\n\nMed vänlig hälsning,\nWedda – Sveriges bröllopsguide`
+        );
+      } catch (e) { /* non-blocking */ }
+    }
+
+    res.json(updated);
+  });
+
+  app.post("/api/orders/:orderId/items/:itemId/decline", requireAuth, async (req, res) => {
+    const item = await storage.getOrderItemById(parseInt(req.params.itemId));
+    if (!item || item.orderId !== parseInt(req.params.orderId)) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+    if (item.status !== "quoted") {
+      return res.status(400).json({ error: "Item is not in quoted status" });
+    }
+
+    const updated = await storage.updateOrderItem(item.id, { status: "declined" });
+    res.json(updated);
+  });
+
   // Price request for price-on-demand items
   app.post("/api/price-request", async (req, res) => {
     const { productId, vendorId, customerEmail, customerName, message } = req.body;
@@ -487,6 +562,118 @@ export async function registerRoutes(server: Server, app: Express) {
       vendorEmail: vendor?.email || "No email available",
       productName: product?.name || "Unknown product",
     });
+  });
+
+  // ── Vendor Response (public — token-authenticated) ─────────────────────────
+
+  // Get order item details for vendor response page
+  app.get("/api/vendor/respond/:token", async (req, res) => {
+    const orderItemId = verifyVendorToken(req.params.token);
+    if (orderItemId === null) {
+      return res.status(403).json({ error: "Ogiltig eller manipulerad länk" });
+    }
+
+    const item = await storage.getOrderItemById(orderItemId);
+    if (!item) {
+      return res.status(404).json({ error: "Förfrågan hittades inte" });
+    }
+
+    const order = await storage.getOrderById(item.orderId);
+    const vendor = await storage.getVendorById(item.vendorId);
+    const product = item.productId ? await storage.getProductById(item.productId) : null;
+    const user = order ? await storage.getUserById(order.userId) : null;
+
+    res.json({
+      orderItemId: item.id,
+      orderId: item.orderId,
+      status: item.status,
+      customerNotes: item.customerNotes,
+      quotedPrice: item.quotedPrice,
+      vendorMessage: item.vendorMessage,
+      deliveryDate: item.deliveryDate,
+      vendorName: vendor?.name || "Okänd leverantör",
+      productName: product?.name || "Tjänst",
+      customerName: user?.name || "Okänd kund",
+      customerEmail: user?.email || "",
+      customerPhone: user?.phone || null,
+      weddingDate: user?.weddingDate || null,
+    });
+  });
+
+  // Submit vendor response
+  app.post("/api/vendor/respond/:token", async (req, res) => {
+    const orderItemId = verifyVendorToken(req.params.token);
+    if (orderItemId === null) {
+      return res.status(403).json({ error: "Ogiltig eller manipulerad länk" });
+    }
+
+    const item = await storage.getOrderItemById(orderItemId);
+    if (!item) {
+      return res.status(404).json({ error: "Förfrågan hittades inte" });
+    }
+
+    const { message, quotedPrice, deliveryDate } = req.body;
+    if (!message && !quotedPrice) {
+      return res.status(400).json({ error: "Ange ett meddelande eller en offert" });
+    }
+
+    const vendor = await storage.getVendorById(item.vendorId);
+    const order = await storage.getOrderById(item.orderId);
+    const product = item.productId ? await storage.getProductById(item.productId) : null;
+    const vendorName = vendor?.name || "Leverantör";
+    const vendorEmail = vendor?.email || "";
+
+    // Update order item with quote if provided
+    const updates: Record<string, any> = {};
+    if (quotedPrice) {
+      updates.quotedPrice = parseInt(quotedPrice, 10);
+      updates.status = "quoted";
+    }
+    if (message) {
+      updates.vendorMessage = message;
+    }
+    if (deliveryDate) {
+      updates.deliveryDate = deliveryDate;
+    }
+
+    await storage.updateOrderItem(item.id, updates);
+
+    // Create message in portal
+    let body = message || "Vi har skickat en offert.";
+    if (quotedPrice) {
+      body += `\n\nOffererat pris: ${parseInt(quotedPrice, 10).toLocaleString("sv-SE")} kr`;
+    }
+    if (deliveryDate) {
+      body += `\nLeveransdatum: ${deliveryDate}`;
+    }
+
+    await storage.createMessage({
+      orderId: item.orderId,
+      orderItemId: item.id,
+      senderType: "vendor",
+      senderName: vendorName,
+      senderEmail: vendorEmail,
+      subject: quotedPrice ? `Offert från ${vendorName}` : `Meddelande från ${vendorName}`,
+      body,
+      read: false,
+    });
+
+    // Notify customer via email
+    if (order) {
+      const customer = await storage.getUserById(order.userId);
+      if (customer?.email) {
+        try {
+          const productLabel = product?.name || "tjänst";
+          sendEmail(
+            [customer.email],
+            `${vendorName} har svarat på din förfrågan`,
+            `Hej ${customer.name}!\n\n${vendorName} har svarat på din förfrågan gällande ${productLabel}.\n\n${quotedPrice ? `Offert: ${parseInt(quotedPrice, 10).toLocaleString("sv-SE")} kr\n` : ""}${deliveryDate ? `Leveransdatum: ${deliveryDate}\n` : ""}${message ? `Meddelande:\n${message}\n` : ""}\nLogga in på Wedda för att se svaret och hantera offerten i din portal.\n\nVarma hälsningar,\nTeamet på Wedda`
+          );
+        } catch (e) { /* non-blocking */ }
+      }
+    }
+
+    res.json({ success: true });
   });
 
   // ── Messages ─────────────────────────────────────────────────────────────────

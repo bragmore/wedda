@@ -93,6 +93,25 @@ export default function Portal() {
     },
   });
 
+  const acceptMutation = useMutation({
+    mutationFn: async ({ orderId, itemId }: { orderId: number; itemId: number }) => {
+      return apiRequest("POST", `/api/orders/${orderId}/items/${itemId}/accept`).then(r => r.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/user", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+    },
+  });
+
+  const declineMutation = useMutation({
+    mutationFn: async ({ orderId, itemId }: { orderId: number; itemId: number }) => {
+      return apiRequest("POST", `/api/orders/${orderId}/items/${itemId}/decline`).then(r => r.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/user", userId] });
+    },
+  });
+
   const replyMutation = useMutation({
     mutationFn: async ({ orderId, body, vendorEmail }: { orderId: number; body: string; vendorEmail?: string }) => {
       return apiRequest("POST", `/api/orders/${orderId}/messages`, {
@@ -527,13 +546,22 @@ export default function Portal() {
                         </div>
                         {item.status === "quoted" && (
                           <div className="flex gap-2 mt-3 pt-3 border-t border-border/50">
-                            <Button size="sm" className="cursor-pointer" onClick={() => {
-                              // Accept quote - just update status
-                            }}>
+                            <Button
+                              size="sm"
+                              className="cursor-pointer"
+                              disabled={acceptMutation.isPending || declineMutation.isPending}
+                              onClick={() => acceptMutation.mutate({ orderId: order.id, itemId: item.id })}
+                            >
                               <CheckCircle className="h-3 w-3 mr-1" />
                               {sv ? "Acceptera" : "Accept"}
                             </Button>
-                            <Button size="sm" variant="outline" className="cursor-pointer">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="cursor-pointer"
+                              disabled={acceptMutation.isPending || declineMutation.isPending}
+                              onClick={() => declineMutation.mutate({ orderId: order.id, itemId: item.id })}
+                            >
                               <AlertCircle className="h-3 w-3 mr-1" />
                               {sv ? "Avböj" : "Decline"}
                             </Button>

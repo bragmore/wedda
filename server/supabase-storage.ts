@@ -513,6 +513,17 @@ export class SupabaseStorage implements IStorage {
     return data.map(d => this.mapDbOrderItem(d));
   }
 
+  async getOrderItemById(id: number): Promise<OrderItem | undefined> {
+    const { data, error } = await this.supabase
+      .from("wedda_order_items")
+      .select()
+      .eq("id", id)
+      .single();
+
+    if (error || !data) return undefined;
+    return this.mapDbOrderItem(data);
+  }
+
   async updateOrderItem(id: number, updates: Partial<OrderItem>): Promise<OrderItem | undefined> {
     const dbUpdates: Record<string, any> = {};
     if (updates.status !== undefined) dbUpdates.status = updates.status;
