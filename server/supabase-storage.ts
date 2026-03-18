@@ -1,7 +1,11 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import crypto from "crypto";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import {
   Category, InsertCategory,
   Vendor, InsertVendor,
@@ -92,9 +96,11 @@ export class SupabaseStorage implements IStorage {
     // Try multiple paths for the data files (works in both dev and serverless)
     const possibleDirs = [
       path.join(process.cwd(), "server"),
-      path.join(__dirname, ".."),
       path.join(__dirname),
+      path.join(__dirname, ".."),
+      path.join(__dirname, "..", "server"),
       process.cwd(),
+      "/var/task/server",
     ];
 
     let dataDir = possibleDirs[0];
