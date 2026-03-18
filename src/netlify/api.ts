@@ -1,6 +1,6 @@
 import express from "express";
 import serverless from "serverless-http";
-import { registerRoutes } from "../../server/routes";
+import { registerRoutes } from "../../server/routes";  // esbuild resolves from project root
 import { createServer } from "http";
 
 const app = express();

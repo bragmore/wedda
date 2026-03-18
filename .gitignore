@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 .DS_Store
+# Only the built .mjs should be in netlify/functions
+netlify/functions/*.ts
+netlify/functions/*.js
