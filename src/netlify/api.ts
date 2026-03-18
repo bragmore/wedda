@@ -24,8 +24,8 @@ const initPromise = (async () => {
   routesRegistered = true;
 })();
 
-// Export handler for Netlify
-export const handler = async (event: any, context: any) => {
+// Handler for Netlify
+const handler = async (event: any, context: any) => {
   if (!routesRegistered) {
     await initPromise;
   }
@@ -34,3 +34,5 @@ export const handler = async (event: any, context: any) => {
   });
   return serverlessHandler(event, context);
 };
+
+export { handler };

@@ -60,23 +60,22 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  // Build Netlify Function — bundle everything (no externals) so Netlify
-  // doesn't try to resolve dependencies with zip-it-and-ship-it.
-  // Use ESM format with .mjs extension so Netlify runs it as ESM.
+  // Build Netlify Function — bundle everything into an IIFE, then wrap with CJS export.
   console.log("building netlify function...");
   await esbuild({
     entryPoints: ["src/netlify/api.ts"],
     platform: "node",
     bundle: true,
-    format: "esm",
-    outfile: "netlify/functions/api.mjs",
+    format: "iife",
+    globalName: "__netlify",
+    outfile: "netlify/functions/api.js",
     define: {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
     external: [],
     logLevel: "info",
-    banner: { js: "import { createRequire } from 'module'; import { fileURLToPath as __esm_fileURLToPath } from 'url'; import { dirname as __esm_dirname } from 'path'; const require = createRequire(import.meta.url); const __filename = __esm_fileURLToPath(import.meta.url); const __dirname = __esm_dirname(__filename);" },
+    footer: { js: "module.exports = { handler: __netlify.handler };" },
   });
 }
 
