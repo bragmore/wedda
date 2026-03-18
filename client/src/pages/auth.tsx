@@ -256,8 +256,8 @@ export default function AuthPage() {
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {sv
-                    ? "Om e-postadressen finns registrerad har vi skickat en länk för att återställa lösenordet."
-                    : "If the email is registered, we've sent a password reset link."}
+                    ? "Om e-postadressen finns registrerad har vi skickat en återställningskod."
+                    : "If the email is registered, we've sent a password reset code."}
                 </p>
               </div>
             ) : (
