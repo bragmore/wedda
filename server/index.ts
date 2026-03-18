@@ -68,6 +68,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  console.log("[startup] NODE_ENV:", process.env.NODE_ENV);
+  console.log("[startup] cwd:", process.cwd());
+
   try {
     await registerRoutes(httpServer, app);
   } catch (err) {
