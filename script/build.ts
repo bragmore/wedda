@@ -60,14 +60,9 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  // Build Netlify Function
+  // Build Netlify Function — bundle everything (no externals) so Netlify
+  // doesn't try to resolve dependencies with zip-it-and-ship-it
   console.log("building netlify function...");
-  const netlifyAllowlist = [
-    ...allowlist,
-    "@supabase/supabase-js",
-    "serverless-http",
-  ];
-  const netlifyExternals = allDeps.filter((dep) => !netlifyAllowlist.includes(dep));
   await esbuild({
     entryPoints: ["netlify/functions/api.ts"],
     platform: "node",
@@ -78,7 +73,7 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
-    external: netlifyExternals,
+    external: [],
     logLevel: "info",
   });
 }
