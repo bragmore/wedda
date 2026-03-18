@@ -97,7 +97,7 @@ export async function registerRoutes(server: Server, app: Express) {
       phone: phone || null,
     });
 
-    const token = storage.createSession(user.id);
+    const token = await storage.createSession(user.id);
 
     // Send welcome email
     try {
@@ -128,7 +128,7 @@ export async function registerRoutes(server: Server, app: Express) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const token = storage.createSession(user.id);
+    const token = await storage.createSession(user.id);
     res.json({ user: safeUser(user), token });
   });
 

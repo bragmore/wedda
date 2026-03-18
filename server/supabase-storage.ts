@@ -42,6 +42,21 @@ interface RawVendor {
   description_en?: string;
 }
 
+interface RawProduct {
+  name: string;
+  name_sv?: string;
+  name_en?: string;
+  category_id: string;
+  description: string;
+  price_from: number | null;
+  price_to: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  price_on_demand?: boolean;
+  image_url: string;
+  vendor_id?: number;
+}
+
 
 function generateToken(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -60,10 +75,7 @@ export class SupabaseStorage implements IStorage {
   private categorySlugMap: Map<string, number> = new Map();
   private categoryIdMap: Map<string, number> = new Map();
   private vendorsCache: Map<number, Vendor> = new Map();
-
-  // In-memory session store (serverless-safe with short TTL)
-  // Note: For production, use Supabase sessions table or JWT tokens
-  private sessions: Map<string, number> = new Map();
+  private productsCache: Map<number, Product> = new Map();
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -149,6 +161,29 @@ export class SupabaseStorage implements IStorage {
       this.vendorsCache.set(id, vendor);
     });
 
+    // Load products from JSON
+    const rawProducts: RawProduct[] = JSON.parse(
+      fs.readFileSync(path.join(dataDir, "data_products.json"), "utf-8")
+    );
+
+    let productId = 1;
+    rawProducts.forEach(raw => {
+      const id = productId++;
+      const priceFrom = raw.price_from ?? raw.price_min ?? null;
+      const priceTo = raw.price_to ?? raw.price_max ?? null;
+      const product: Product = {
+        id,
+        name: raw.name || raw.name_sv || "",
+        category_id: raw.category_id,
+        description: raw.description || raw.name_en || raw.name || "",
+        price_from: priceFrom,
+        price_to: priceTo,
+        price_on_demand: raw.price_on_demand ?? (!priceFrom && !priceTo),
+        image_url: raw.image_url || "",
+        vendor_id: raw.vendor_id,
+      };
+      this.productsCache.set(id, product);
+    });
   }
 
   // ── Categories (from JSON cache) ─────────────────────────────────────────
@@ -206,77 +241,39 @@ export class SupabaseStorage implements IStorage {
     return [...regions].sort();
   }
 
-  // ── Products (from Supabase) ─────────────────────────────────────────────
-  private mapDbProduct(row: any): Product {
-    return {
-      id: row.id,
-      name: row.name || "",
-      category_id: row.category_id || "",
-      description: row.description || "",
-      price_from: row.price_from ?? null,
-      price_to: row.price_to ?? null,
-      price_on_demand: !row.price_from && !row.price_to,
-      image_url: row.image_url || "",
-      vendor_id: row.vendor_id ?? undefined,
-    };
-  }
-
+  // ── Products (from JSON cache) ────────────────────────────────────────────
   async getProducts(categoryId?: string): Promise<Product[]> {
-    let query = this.supabase.from("products").select("*");
-    if (categoryId) query = query.eq("category_id", categoryId);
-    const { data, error } = await query;
-    if (error) throw new Error(`Failed to get products: ${error.message}`);
-    return (data || []).map(r => this.mapDbProduct(r));
+    const all = [...this.productsCache.values()];
+    if (!categoryId) return all;
+    return all.filter(p => p.category_id === categoryId);
   }
 
   async getProductsByCategory(categoryId: string): Promise<Product[]> {
-    const { data, error } = await this.supabase
-      .from("products")
-      .select("*")
-      .eq("category_id", categoryId);
-    if (error) throw new Error(`Failed to get products by category: ${error.message}`);
-    return (data || []).map(r => this.mapDbProduct(r));
+    return [...this.productsCache.values()].filter(p => p.category_id === categoryId);
   }
 
   async getProductById(id: number): Promise<Product | undefined> {
-    const { data, error } = await this.supabase
-      .from("products")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-    if (error) throw new Error(`Failed to get product: ${error.message}`);
-    return data ? this.mapDbProduct(data) : undefined;
+    return this.productsCache.get(id);
   }
 
   async getProductsByVendor(vendorId: number): Promise<Product[]> {
-    const { data, error } = await this.supabase
-      .from("products")
-      .select("*")
-      .eq("vendor_id", vendorId);
-    if (error) throw new Error(`Failed to get products by vendor: ${error.message}`);
-    return (data || []).map(r => this.mapDbProduct(r));
+    return [...this.productsCache.values()].filter(p => p.vendor_id === vendorId);
   }
 
   async searchProducts(query: string): Promise<Product[]> {
-    const { data, error } = await this.supabase
-      .from("products")
-      .select("*")
-      .or(`name.ilike.%${query}%,description.ilike.%${query}%`);
-    if (error) throw new Error(`Failed to search products: ${error.message}`);
-    return (data || []).map(r => this.mapDbProduct(r));
+    const q = query.toLowerCase();
+    return [...this.productsCache.values()].filter(
+      p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+    );
   }
 
   async getProductsByBudget(maxBudget: number, categoryIds?: string[]): Promise<Product[]> {
-    let q = this.supabase
-      .from("products")
-      .select("*")
-      .or(`price_from.is.null,price_from.lte.${maxBudget}`);
-    if (categoryIds && categoryIds.length > 0) {
-      q = q.in("category_id", categoryIds);
-    }
-    const { data, error } = await q;
-    if (error) throw new Error(`Failed to get products by budget: ${error.message}`);
-    return (data || []).map(r => this.mapDbProduct(r));
+    return [...this.productsCache.values()].filter(p => {
+      if (categoryIds && !categoryIds.includes(p.category_id)) return false;
+      if (p.price_on_demand) return true;
+      if (!p.price_from) return true;
+      return p.price_from <= maxBudget;
+    });
   }
 
   // ── Users (Supabase) ────────────────────────────────────────────────────
@@ -372,21 +369,34 @@ export class SupabaseStorage implements IStorage {
     };
   }
 
-  // ── Auth Sessions (in-memory for now; JWT recommended for serverless) ───
-  createSession(userId: number): string {
+  // ── Auth Sessions (persisted in Supabase — serverless-safe) ─────────────
+  async createSession(userId: number): Promise<string> {
     const token = generateToken();
-    this.sessions.set(token, userId);
+    const { error } = await this.supabase
+      .from("wedda_sessions")
+      .insert({ token, user_id: userId });
+    if (error) console.error("[session] Failed to persist session:", error.message);
     return token;
   }
 
   async getUserByToken(token: string): Promise<User | undefined> {
-    const userId = this.sessions.get(token);
-    if (!userId) return undefined;
-    return this.getUserById(userId);
+    const { data, error } = await this.supabase
+      .from("wedda_sessions")
+      .select("user_id")
+      .eq("token", token)
+      .maybeSingle();
+    if (error || !data) return undefined;
+    return this.getUserById(data.user_id);
   }
 
   deleteSession(token: string): void {
-    this.sessions.delete(token);
+    this.supabase
+      .from("wedda_sessions")
+      .delete()
+      .eq("token", token)
+      .then(({ error }) => {
+        if (error) console.error("[session] Failed to delete session:", error.message);
+      });
   }
 
   // ── Password Reset (HMAC-signed tokens — stateless, serverless-safe) ───

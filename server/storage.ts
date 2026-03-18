@@ -89,7 +89,7 @@ export interface IStorage {
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
 
   // Auth sessions
-  createSession(userId: number): string;
+  createSession(userId: number): string | Promise<string>;
   getUserByToken(token: string): Promise<User | undefined>;
   deleteSession(token: string): void;
 
