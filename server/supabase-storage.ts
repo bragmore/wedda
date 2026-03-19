@@ -53,6 +53,7 @@ interface RawProduct {
   vendor_id?: number;
 }
 
+
 function generateToken(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let token = "";
@@ -72,10 +73,6 @@ export class SupabaseStorage implements IStorage {
   private vendorsCache: Map<number, Vendor> = new Map();
   private productsCache: Map<number, Product> = new Map();
 
-  // In-memory session store (serverless-safe with short TTL)
-  // Note: For production, use Supabase sessions table or JWT tokens
-  private sessions: Map<string, number> = new Map();
-
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -92,9 +89,8 @@ export class SupabaseStorage implements IStorage {
     // Try multiple paths for the data files (works in both dev and serverless)
     const possibleDirs = [
       path.join(process.cwd(), "server"),
-      path.join(__dirname, ".."),
-      path.join(__dirname),
       process.cwd(),
+      "/var/task/server",
     ];
 
     let dataDir = possibleDirs[0];
@@ -163,9 +159,9 @@ export class SupabaseStorage implements IStorage {
       fs.readFileSync(path.join(dataDir, "data_products.json"), "utf-8")
     );
 
-    let prodId = 1;
+    let productId = 1;
     rawProducts.forEach(raw => {
-      const id = prodId++;
+      const id = productId++;
       const priceFrom = raw.price_from ?? raw.price_min ?? null;
       const priceTo = raw.price_to ?? raw.price_max ?? null;
       const product: Product = {
@@ -238,7 +234,7 @@ export class SupabaseStorage implements IStorage {
     return [...regions].sort();
   }
 
-  // ── Products (from JSON cache) ───────────────────────────────────────────
+  // ── Products (from JSON cache) ────────────────────────────────────────────
   async getProducts(categoryId?: string): Promise<Product[]> {
     const all = [...this.productsCache.values()];
     if (!categoryId) return all;
@@ -366,21 +362,34 @@ export class SupabaseStorage implements IStorage {
     };
   }
 
-  // ── Auth Sessions (in-memory for now; JWT recommended for serverless) ───
-  createSession(userId: number): string {
+  // ── Auth Sessions (persisted in Supabase — serverless-safe) ─────────────
+  async createSession(userId: number): Promise<string> {
     const token = generateToken();
-    this.sessions.set(token, userId);
+    const { error } = await this.supabase
+      .from("wedda_sessions")
+      .insert({ token, user_id: userId });
+    if (error) console.error("[session] Failed to persist session:", error.message);
     return token;
   }
 
   async getUserByToken(token: string): Promise<User | undefined> {
-    const userId = this.sessions.get(token);
-    if (!userId) return undefined;
-    return this.getUserById(userId);
+    const { data, error } = await this.supabase
+      .from("wedda_sessions")
+      .select("user_id")
+      .eq("token", token)
+      .maybeSingle();
+    if (error || !data) return undefined;
+    return this.getUserById(data.user_id);
   }
 
   deleteSession(token: string): void {
-    this.sessions.delete(token);
+    this.supabase
+      .from("wedda_sessions")
+      .delete()
+      .eq("token", token)
+      .then(({ error }) => {
+        if (error) console.error("[session] Failed to delete session:", error.message);
+      });
   }
 
   // ── Password Reset (HMAC-signed tokens — stateless, serverless-safe) ───
@@ -511,6 +520,17 @@ export class SupabaseStorage implements IStorage {
 
     if (error || !data) return [];
     return data.map(d => this.mapDbOrderItem(d));
+  }
+
+  async getOrderItemById(id: number): Promise<OrderItem | undefined> {
+    const { data, error } = await this.supabase
+      .from("wedda_order_items")
+      .select()
+      .eq("id", id)
+      .single();
+
+    if (error || !data) return undefined;
+    return this.mapDbOrderItem(data);
   }
 
   async updateOrderItem(id: number, updates: Partial<OrderItem>): Promise<OrderItem | undefined> {

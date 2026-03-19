@@ -5,3 +5,4 @@ dist/
 .DS_Store
 # Only the built .js should be in netlify/functions
 netlify/functions/*.ts
+.claude/

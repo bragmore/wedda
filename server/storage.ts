@@ -1,19 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-// Works in both ESM (dev) and CJS (production build)
-let _currentDir: string;
-try {
-  // ESM: import.meta.url is defined
-  if (typeof import.meta !== "undefined" && typeof import.meta.url === "string") {
-    _currentDir = path.dirname(fileURLToPath(import.meta.url));
-  } else {
-    _currentDir = process.cwd();
-  }
-} catch {
-  _currentDir = process.cwd();
-}
 import {
   Category, InsertCategory,
   Vendor, InsertVendor,
@@ -99,7 +85,7 @@ export interface IStorage {
   updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
 
   // Auth sessions
-  createSession(userId: number): string;
+  createSession(userId: number): string | Promise<string>;
   getUserByToken(token: string): Promise<User | undefined>;
   deleteSession(token: string): void;
 
@@ -117,6 +103,7 @@ export interface IStorage {
   // Order Items
   createOrderItem(item: InsertOrderItem): Promise<OrderItem>;
   getOrderItemsByOrder(orderId: number): Promise<OrderItem[]>;
+  getOrderItemById(id: number): Promise<OrderItem | undefined>;
   updateOrderItem(id: number, updates: Partial<OrderItem>): Promise<OrderItem | undefined>;
 
   // Messages
@@ -163,9 +150,7 @@ export class MemStorage implements IStorage {
     // Try multiple paths: works in dev (cwd/server), production (cwd/server), and Netlify Functions
     const candidates = [
       path.join(process.cwd(), "server"),
-      path.join(_currentDir),
-      path.join(_currentDir, "..", "server"),
-      path.join(_currentDir, ".."),
+      process.cwd(),
       "/var/task/server",
     ];
     let dataDir = candidates[0];
@@ -463,6 +448,10 @@ export class MemStorage implements IStorage {
 
   async getOrderItemsByOrder(orderId: number): Promise<OrderItem[]> {
     return [...this.orderItems.values()].filter(i => i.orderId === orderId);
+  }
+
+  async getOrderItemById(id: number): Promise<OrderItem | undefined> {
+    return this.orderItems.get(id);
   }
 
   async updateOrderItem(id: number, updates: Partial<OrderItem>): Promise<OrderItem | undefined> {

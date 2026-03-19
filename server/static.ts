@@ -3,17 +3,28 @@ import fs from "fs";
 import path from "path";
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  const distPath = path.resolve(process.cwd(), "dist/public");
+  const indexPath = path.join(distPath, "index.html");
+
+  console.log("[static] __dirname:", __dirname);
+  console.log("[static] cwd:", process.cwd());
+  console.log("[static] Serving static from:", distPath);
+
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
-    );
+    console.error("[static] ERROR: dist/public not found at", distPath);
+    app.get("/{*path}", (_req, res) => {
+      res.status(503).send("Frontend not built. dist/public is missing.");
+    });
+    return;
   }
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("/{*path}", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  app.get("/{*path}", (_req, res) => {
+    if (!fs.existsSync(indexPath)) {
+      console.error("[static] ERROR: index.html not found at", indexPath);
+      return res.status(500).send("index.html missing from dist/public.");
+    }
+    res.sendFile(indexPath);
   });
 }
