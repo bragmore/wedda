@@ -2,8 +2,18 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Works in both ESM (dev) and CJS (production build)
+let _currentDir: string;
+try {
+  // ESM: import.meta.url is defined
+  if (typeof import.meta !== "undefined" && typeof import.meta.url === "string") {
+    _currentDir = path.dirname(fileURLToPath(import.meta.url));
+  } else {
+    _currentDir = process.cwd();
+  }
+} catch {
+  _currentDir = process.cwd();
+}
 import {
   Category, InsertCategory,
   Vendor, InsertVendor,
@@ -153,9 +163,9 @@ export class MemStorage implements IStorage {
     // Try multiple paths: works in dev (cwd/server), production (cwd/server), and Netlify Functions
     const candidates = [
       path.join(process.cwd(), "server"),
-      path.join(__dirname),
-      path.join(__dirname, "..", "server"),
-      path.join(__dirname, ".."),
+      path.join(_currentDir),
+      path.join(_currentDir, "..", "server"),
+      path.join(_currentDir, ".."),
       "/var/task/server",
     ];
     let dataDir = candidates[0];

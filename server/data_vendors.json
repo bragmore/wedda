@@ -5773,5 +5773,35 @@
     "region": "Stockholm",
     "price_range": "2 500–12 000 SEK",
     "description": ""
+  },
+  {
+    "name": "Tårtstugan",
+    "category_id": "cake",
+    "website": "https://tartstugan.se/",
+    "email": "karin@tartstugan.se",
+    "city": "Norrtälje",
+    "price_range": "Tårtor 85–125+ kr/bit (min 20 bitar).",
+    "description": "Tårtstugan bakar bröllopstårtor och andra bakverk på beställning och levererar i Norrtälje, Uppsala och Stockholm. Priset per bit varierar med dekorationsnivå.",
+    "region": "Stockholm"
+  },
+  {
+    "name": "Karolina Ehrenpil Photography",
+    "category_id": "photography",
+    "website": "https://www.karolinaehrenpil.se/",
+    "email": "info@karolinaehrenpil.se",
+    "city": "Stockholm",
+    "price_range": "Porträtt/stadshusvigsel från 8 500 kr; bröllopspaket från 16 000 kr.",
+    "description": "Bröllopsfotograf baserad i Stockholm som fotograferar i hela Sverige och utomlands. Erbjuder bröllopspaket och möjlighet att boka enstaka timmar för porträtt eller stadshusvigsel under lågsäsong/vardagar.",
+    "region": "Stockholm"
+  },
+  {
+    "name": "Hyra festlokal Stockholm",
+    "category_id": "venues",
+    "website": "https://hyrafestlokal-stockholm.se",
+    "email": "info@hyrafestlokal-stockholm.se",
+    "city": "Stockholm",
+    "price_range": "Pris på förfrågan.",
+    "description": "Tjänst för bokningsförfrågan när ni vill hyra festlokal i Stockholm. Kontakta via e-post för offert och bokningsinformation.",
+    "region": "Stockholm"
   }
 ]
