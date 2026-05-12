@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import type { User } from "@shared/schema";
 
@@ -8,6 +8,7 @@ interface AuthContextType {
   user: SafeUser | null;
   token: string | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<SafeUser>;
   register: (data: { email: string; password: string; name: string; phone?: string }) => Promise<SafeUser>;
   logout: () => void;
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
   isAuthenticated: false,
+  isLoading: true,
   login: async () => { throw new Error("AuthProvider not mounted"); },
   register: async () => { throw new Error("AuthProvider not mounted"); },
   logout: () => {},
@@ -26,21 +28,58 @@ const AuthContext = createContext<AuthContextType>({
   setAuthState: () => {},
 });
 
-// Store token in module scope so apiRequest can access it
-let currentToken: string | null = null;
+const TOKEN_KEY = "wedda_auth_token";
+
+// Module-scope token so apiRequest can read it without React context
+let currentToken: string | null = localStorage.getItem(TOKEN_KEY);
 
 export function getAuthToken(): string | null {
   return currentToken;
 }
 
+function persistToken(t: string | null) {
+  currentToken = t;
+  if (t) localStorage.setItem(TOKEN_KEY, t);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SafeUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(localStorage.getItem(TOKEN_KEY));
+  const [isLoading, setIsLoading] = useState(true);
+
+  // On mount, restore session from stored token
+  useEffect(() => {
+    const stored = localStorage.getItem(TOKEN_KEY);
+    if (!stored) {
+      setIsLoading(false);
+      return;
+    }
+    currentToken = stored;
+    fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${stored}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(u => {
+        if (u) {
+          setUser(u);
+          setToken(stored);
+        } else {
+          persistToken(null);
+          setToken(null);
+        }
+      })
+      .catch(() => {
+        persistToken(null);
+        setToken(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const setAuthState = useCallback((u: SafeUser, t: string) => {
     setUser(u);
     setToken(t);
-    currentToken = t;
+    persistToken(t);
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<SafeUser> => {
@@ -48,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     setUser(data.user);
     setToken(data.token);
-    currentToken = data.token;
+    persistToken(data.token);
     return data.user;
   }, []);
 
@@ -57,13 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await res.json();
     setUser(result.user);
     setToken(result.token);
-    currentToken = result.token;
+    persistToken(result.token);
     return result.user;
   }, []);
 
   const logout = useCallback(() => {
     if (token) {
-      // Fire and forget
       fetch("/api/auth/logout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -71,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setToken(null);
-    currentToken = null;
+    persistToken(null);
   }, [token]);
 
   const updateProfile = useCallback(async (updates: Partial<SafeUser>): Promise<SafeUser> => {
@@ -97,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       token,
       isAuthenticated: !!user && !!token,
+      isLoading,
       login,
       register,
       logout,

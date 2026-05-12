@@ -108,7 +108,7 @@ export async function registerRoutes(server: Server, app: Express) {
     try {
       sendEmail(
         [email],
-        "Välkommen till Wedda! 🎊",
+        "Välkommen till Wedda",
         `Hej ${name}!\n\nVälkommen till Wedda – Sveriges bröllopsguide.\n\nDitt konto har skapats och du kan nu börja planera ert drömbröllop.\n\nGå till vår bröllopsguide för att komma igång med att välja leverantörer och skapa ert personliga bröllopspaket.\n\nHar du frågor? Kontakta oss på jonatan.siden@gmail.com\n\nVarma hälsningar,\nTeamet på Wedda`
       );
     } catch (e) { /* non-blocking */ }
@@ -455,8 +455,13 @@ export async function registerRoutes(server: Server, app: Express) {
     });
   });
 
-  app.get("/api/orders/user/:userId", async (req, res) => {
-    const orders = await storage.getOrdersByUser(parseInt(req.params.userId));
+  app.get("/api/orders/user/:userId", requireAuth, async (req, res) => {
+    const requestedId = parseInt(req.params.userId);
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "jonatan.siden@gmail.com,jonatan@prymit.com").split(",");
+    if (req.authUser!.id !== requestedId && !ADMIN_EMAILS.includes(req.authUser!.email)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    const orders = await storage.getOrdersByUser(requestedId);
     const result = [];
     for (const order of orders) {
       const items = await storage.getOrderItemsByOrder(order.id);
@@ -476,15 +481,23 @@ export async function registerRoutes(server: Server, app: Express) {
     res.json(result);
   });
 
-  app.get("/api/orders/:id", async (req, res) => {
+  app.get("/api/orders/:id", requireAuth, async (req, res) => {
     const order = await storage.getOrderById(parseInt(req.params.id));
     if (!order) return res.status(404).json({ error: "Order not found" });
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "jonatan.siden@gmail.com,jonatan@prymit.com").split(",");
+    if (order.userId !== req.authUser!.id && !ADMIN_EMAILS.includes(req.authUser!.email)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const items = await storage.getOrderItemsByOrder(order.id);
     res.json({ ...order, items });
   });
 
-  // Simulate vendor response (for demo — admin only)
-  app.post("/api/orders/:orderId/items/:itemId/quote", async (req, res) => {
+  // Simulate vendor response (admin only)
+  app.post("/api/orders/:orderId/items/:itemId/quote", requireAuth, async (req, res) => {
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "jonatan.siden@gmail.com,jonatan@prymit.com").split(",");
+    if (!ADMIN_EMAILS.includes(req.authUser!.email)) {
+      return res.status(403).json({ error: "Admin only" });
+    }
     const { quotedPrice, vendorMessage, deliveryDate } = req.body;
     const item = await storage.updateOrderItem(parseInt(req.params.itemId), {
       quotedPrice,
@@ -556,13 +569,31 @@ export async function registerRoutes(server: Server, app: Express) {
   // Price request for price-on-demand items
   app.post("/api/price-request", async (req, res) => {
     const { productId, vendorId, customerEmail, customerName, message } = req.body;
+    if (!vendorId || !customerEmail || !customerName) {
+      return res.status(400).json({ error: "vendorId, customerEmail and customerName are required" });
+    }
+
     const vendor = await storage.getVendorById(vendorId);
     const product = productId ? await storage.getProductById(productId) : null;
+
+    if (!vendor) {
+      return res.status(404).json({ error: "Vendor not found" });
+    }
+
+    if (vendor.email) {
+      try {
+        sendEmail(
+          [vendor.email],
+          `Prisförfrågan via Wedda`,
+          `Hej ${vendor.name}!\n\nNi har fått en prisförfrågan via Wedda.\n\nKund: ${customerName}\nE-post: ${customerEmail}\n${product ? `Tjänst: ${product.name}\n` : ""}${message ? `\nMeddelande:\n${message}\n` : ""}\nVänligen kontakta kunden direkt för att diskutera pris och tillgänglighet.\n\nMed vänlig hälsning,\nWedda – Sveriges bröllopsguide\nwedda.se`
+        );
+      } catch (e) { /* non-blocking */ }
+    }
 
     res.json({
       success: true,
       message: "Price request sent",
-      vendorEmail: vendor?.email || "No email available",
+      vendorEmail: vendor.email || "No email available",
       productName: product?.name || "Unknown product",
     });
   });
