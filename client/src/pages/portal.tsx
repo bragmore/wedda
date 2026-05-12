@@ -53,18 +53,24 @@ export default function Portal() {
     queryKey: ["/api/orders/user", userId],
     queryFn: () => apiRequest("GET", `/api/orders/user/${userId}`).then(r => r.json()),
     enabled: !!userId,
+    refetchInterval: 15000,
+    staleTime: 10000,
   });
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
     queryFn: () => apiRequest("GET", "/api/messages").then(r => r.json()),
     enabled: !!userId,
+    refetchInterval: 15000,
+    staleTime: 10000,
   });
 
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/messages/unread-count"],
     queryFn: () => apiRequest("GET", "/api/messages/unread-count").then(r => r.json()),
     enabled: !!userId,
+    refetchInterval: 15000,
+    staleTime: 10000,
   });
 
   const unreadCount = unreadData?.count ?? 0;
