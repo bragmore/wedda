@@ -2,32 +2,13 @@ import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
 
-// server deps to bundle to reduce openat(2) syscalls
-// which helps cold start times
-const allowlist = [
-  "@google/generative-ai",
-  "axios",
-  "connect-pg-simple",
-  "cors",
+// Deps to bundle into the server binary (reduces node_modules lookups at runtime)
+const bundled = [
+  "bcryptjs",
   "date-fns",
   "drizzle-orm",
   "drizzle-zod",
   "express",
-  "express-rate-limit",
-  "express-session",
-  "jsonwebtoken",
-  "memorystore",
-  "multer",
-  "nanoid",
-  "nodemailer",
-  "openai",
-  "passport",
-  "passport-local",
-  "pg",
-  "stripe",
-  "uuid",
-  "ws",
-  "xlsx",
   "zod",
   "zod-validation-error",
 ];
@@ -44,7 +25,7 @@ async function buildAll() {
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
   ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+  const externals = allDeps.filter((dep) => !bundled.includes(dep));
 
   await esbuild({
     entryPoints: ["server/index.ts"],
@@ -57,23 +38,6 @@ async function buildAll() {
     },
     minify: true,
     external: externals,
-    logLevel: "info",
-  });
-
-  // Build Netlify Function — single self-contained CJS file.
-  // Source uses require/module.exports so esbuild produces real CJS exports.
-  console.log("building netlify function...");
-  await esbuild({
-    entryPoints: ["src/netlify/api.ts"],
-    platform: "node",
-    bundle: true,
-    format: "cjs",
-    outfile: "netlify/functions/api.js",
-    define: {
-      "process.env.NODE_ENV": '"production"',
-    },
-    minify: true,
-    external: [],
     logLevel: "info",
   });
 }

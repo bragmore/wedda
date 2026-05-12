@@ -504,19 +504,30 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use Supabase storage when SUPABASE_URL is set, otherwise fall back to in-memory
 function createStorage(): IStorage {
-  if (process.env.SUPABASE_URL && (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY)) {
+  const isProd = process.env.NODE_ENV === "production";
+
+  if (process.env.SUPABASE_URL && (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)) {
     try {
       const { SupabaseStorage } = require("./supabase-storage");
       console.log("[storage] Using Supabase storage");
       return new SupabaseStorage();
     } catch (e: any) {
+      if (isProd) {
+        console.error(`[storage] Failed to init Supabase storage: ${e.message}`);
+        process.exit(1);
+      }
       console.warn(`[storage] Failed to init Supabase storage, falling back to in-memory: ${e.message}`);
       return new MemStorage();
     }
   }
-  console.log("[storage] Using in-memory storage");
+
+  if (isProd) {
+    console.error("[storage] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in production");
+    process.exit(1);
+  }
+
+  console.log("[storage] Using in-memory storage (development)");
   return new MemStorage();
 }
 

@@ -62,10 +62,12 @@ function safeUser(user: User): Omit<User, "passwordHash"> & { passwordHash?: und
   return safe;
 }
 
-// Get the base URL for links in emails
-function getBaseUrl(_req: Request): string {
+// Get the base URL for links in emails — set BASE_URL env var in production
+function getBaseUrl(req: Request): string {
   if (process.env.BASE_URL) return process.env.BASE_URL;
-  return "https://imaginative-fenglisu-d5e61c.netlify.app";
+  const proto = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost:5000";
+  return `${proto}://${host}`;
 }
 
 export async function registerRoutes(server: Server, app: Express) {
