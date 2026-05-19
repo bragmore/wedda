@@ -10,6 +10,7 @@
 
 ## Deploy & infrastruktur
 - VPS: Hetzner 65.21.183.246 — Dokploy körs på port 8001
+- **Self-hosting-repo:** https://github.com/bragmore/self-hosting — uppdatera detta repo om något installeras/konfigureras på VPS:en på infrastrukturnivå (paket, Docker-config, systemd, portar). Uppdatera INTE för appdeploys eller env-vars.
 - Dokploy app-namn: wedda-main-yt0vtd
 - Domän: wedda.se (Traefik hanterar SSL/routing)
 - Docker service: wedda-main-yt0vtd (Docker Swarm)
