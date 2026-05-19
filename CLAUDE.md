@@ -48,6 +48,10 @@ Inga LLM/AI-tokens används. Appen har ingen AI-integration.
 - server/data_products.json — 536 produkter
 - server/data_vendors.json — 536 leverantörer
 
+## Issue tracking
+- Linear-bräda: https://linear.app/jonatan-siden/project/wedda-5e2cd3051c97
+- Kolla alltid Linear för aktuella issues och status innan du börjar jobba
+
 ## Regler
 - Allt UI på svenska
 - Admin-emails: jonatan.siden@gmail.com, jonatan@prymit.com
